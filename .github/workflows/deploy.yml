@@ -2,37 +2,52 @@ name: Deploy Hexo
 
 on:
   push:
-    branches:
-      - main # 如果你以后用 master 分支，这里改成 master
-
-permissions:
-  contents: write
+    branches: [main]  # 改成你的源码分支名
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: false   # 明确不拉子模块，避免空 gitlink 干扰
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '26' 
+          node-version: '22'   # 降回 Hexo 8 官方支持的稳定版本，排除 Node 26 干扰
+          cache: 'npm'
+
+      - name: Remove stale theme directory
+        run: |
+          # 关键一步：删除可能存在的 themes/solitude 空壳或旧文件
+          # 强制 Hexo 回退到 node_modules/hexo-theme-solitude
+          rm -rf themes/solitude
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Verify theme resolution
+        run: |
+          # 排查用：打印 Hexo 实际解析到的主题路径
+          npx hexo version
+          npx hexo config theme
+          ls -la node_modules/hexo-theme-solitude/ 2>/dev/null || echo "npm 主题包未找到！"
 
       - name: Build Hexo
         run: |
           npx hexo clean
           npx hexo generate
+          touch public/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
-          publish_branch: gh-pages # 将生成的静态文件推送到 gh-pages 分支
+          publish_branch: gh-pages
+          enable_jekyll: false
