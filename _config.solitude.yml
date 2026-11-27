@@ -930,7 +930,7 @@ recent_comments:
 
 # --------------------------- start ---------------------------
 # Busuanzi
-busuanzi: false
+busuanzi: true
 # 0: Original / 1: Custom
 # 0: 原版 / 1: 自定义版
 busuanzi_use: 0
@@ -978,7 +978,8 @@ CDN:
   custom_format: https://cdn.jsdelivr.net/npm/${name}@${version}/${min_file}
   
   # 直接覆盖默认 CDN 链接（优先级最高）
-  options:
+  options:   
+    busuanzi_js: https://events.vercount.one/js
     # algolia_search:
     # aplayer_css:
     # aplayer_js:
