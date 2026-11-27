@@ -1,0 +1,38 @@
+name: Deploy Hexo
+
+on:
+  push:
+    branches:
+      - main # 如果你以后用 master 分支，这里改成 master
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26' # 使用 Node 20，兼容性好
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Hexo
+        run: |
+          npx hexo clean
+          npx hexo generate
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages # 将生成的静态文件推送到 gh-pages 分支
