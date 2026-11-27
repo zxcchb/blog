@@ -1,53 +1,55 @@
-name: Deploy Hexo
+name: Deploy Hexo to Pages
 
 on:
   push:
-    branches: [main]  # 改成你的源码分支名
+    branches:
+      - main  # 如果你的默认分支是 master，请改为 master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          submodules: false   # 明确不拉子模块，避免空 gitlink 干扰
+          submodules: recursive # 如果你的主题是 git submodule，这很重要
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
-          node-version: '22'   # 降回 Hexo 8 官方支持的稳定版本，排除 Node 26 干扰
-          cache: 'npm'
+          node-version: '20' # 建议使用 20 或 22，避免使用 Node 26
 
-      - name: Remove stale theme directory
-        run: |
-          # 关键一步：删除可能存在的 themes/solitude 空壳或旧文件
-          # 强制 Hexo 回退到 node_modules/hexo-theme-solitude
-          rm -rf themes/solitude
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install
-
-      - name: Verify theme resolution
-        run: |
-          # 排查用：打印 Hexo 实际解析到的主题路径
-          npx hexo version
-          npx hexo config theme
-          ls -la node_modules/hexo-theme-solitude/ 2>/dev/null || echo "npm 主题包未找到！"
 
       - name: Build Hexo
         run: |
           npx hexo clean
           npx hexo generate
+          # 关键一步：在生成的 public 目录里创建 .nojekyll 文件
           touch public/.nojekyll
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          publish_branch: gh-pages
-          enable_jekyll: false
+          path: ./public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
